@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
+	"github.com/ethereum/go-ethereum/consensus/kcon"
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -416,7 +417,7 @@ func (c *Clique) snapshot(chain consensus.ChainHeaderReader, number uint64, hash
 	for i := 0; i < len(headers)/2; i++ {
 		headers[i], headers[len(headers)-1-i] = headers[len(headers)-1-i], headers[i]
 	}
-	snap, err := snap.apply(headers)
+	snap, err := snap.apply(headers, chain)
 	if err != nil {
 		return nil, err
 	}
@@ -480,15 +481,6 @@ func (c *Clique) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 	return nil
 }
 
-func getSigners() ([]common.Address, error) {
-	addresses := []string{"13ec15a841332960aab03306484a0b0903479650", "1b9526fe6607e4f9147b9c8137eb4740b0888b9c"}
-	signers := make([]common.Address, 0)
-	for _, address := range addresses {
-		signers = append(signers, common.HexToAddress(address))
-	}
-	return signers, nil
-}
-
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
 func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
@@ -502,27 +494,7 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	if err != nil {
 		return err
 	}
-	if number%c.config.Epoch != 0 {
-		c.lock.RLock()
 
-		// Gather all the proposals that make sense voting on
-		addresses := make([]common.Address, 0, len(c.proposals))
-		for address, authorize := range c.proposals {
-			if snap.validVote(address, authorize) {
-				addresses = append(addresses, address)
-			}
-		}
-		// If there's pending proposals, cast a vote on them
-		if len(addresses) > 0 {
-			header.Coinbase = addresses[rand.Intn(len(addresses))]
-			if c.proposals[header.Coinbase] {
-				copy(header.Nonce[:], nonceAuthVote)
-			} else {
-				copy(header.Nonce[:], nonceDropVote)
-			}
-		}
-		c.lock.RUnlock()
-	}
 	// Set the correct difficulty
 	header.Difficulty = calcDifficulty(snap, c.signer)
 
@@ -533,13 +505,14 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	header.Extra = header.Extra[:extraVanity]
 
 	if number%c.config.Epoch == 0 {
-		signers, err := getSigners()
+		signers, err := kcon.GetSigners() //get signers from kcon
 		if err != nil {
 			log.Error("Can not get the signer list!")
 		}
 		for _, signer := range signers {
 			header.Extra = append(header.Extra, signer[:]...)
 		}
+		copy(header.Nonce[:], nonceAuthVote)
 	}
 
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
