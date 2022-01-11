@@ -533,10 +533,15 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	header.Extra = header.Extra[:extraVanity]
 
 	if number%c.config.Epoch == 0 {
-		for _, signer := range snap.signers() {
+		signers, err := getSigners()
+		if err != nil {
+			log.Error("Can not get the signer list!")
+		}
+		for _, signer := range signers {
 			header.Extra = append(header.Extra, signer[:]...)
 		}
 	}
+
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 
 	// Mix digest is reserved for now, set to empty
