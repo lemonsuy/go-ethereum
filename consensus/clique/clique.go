@@ -480,6 +480,15 @@ func (c *Clique) verifySeal(snap *Snapshot, header *types.Header, parents []*typ
 	return nil
 }
 
+func getSigners() ([]common.Address, error) {
+	addresses := []string{"13ec15a841332960aab03306484a0b0903479650", "1b9526fe6607e4f9147b9c8137eb4740b0888b9c"}
+	signers := make([]common.Address, 0)
+	for _, address := range addresses {
+		signers = append(signers, common.HexToAddress(address))
+	}
+	return signers, nil
+}
+
 // Prepare implements consensus.Engine, preparing all the consensus fields of the
 // header for running the transactions on top.
 func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
