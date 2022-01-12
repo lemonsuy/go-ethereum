@@ -6,6 +6,7 @@
 keystore/
 password.txt
 nodekey
+*.abi
 
 /tmp
 */**/*un~
