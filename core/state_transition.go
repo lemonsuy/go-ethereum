@@ -292,6 +292,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.Context.BlockNumber)
 	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.Context.BlockNumber)
 	london := st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber)
+	bangkok := st.evm.ChainConfig().IsBangkok(st.evm.Context.BlockNumber) // Checkpoint for Bangkok hardfork
 	contractCreation := msg.To() == nil
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
@@ -336,7 +337,14 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	if london {
 		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))
 	}
-	st.state.AddBalance(st.evm.Context.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
+
+	// Send reward to system contract address once reach the checkpoint
+	if bangkok {
+		contractAddr := common.HexToAddress("0xD5AE1eFb538A60aD6760214523B1cD0D8f969688") // Can get contract addr from configuration file (e.g. config.toml)
+		st.state.AddBalance(contractAddr, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
+	} else {
+		st.state.AddBalance(st.evm.Context.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
+	}
 
 	return &ExecutionResult{
 		UsedGas:    st.gasUsed(),

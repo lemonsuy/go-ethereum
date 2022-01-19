@@ -2,10 +2,7 @@ pragma solidity 0.8.11;
 
 contract PoSA {
 
-    constructor () {
-        MINIMUM_STAKE = 100 * 1e18;
-        SIGNER_AMOUNT = 3;
-    }
+    constructor () {}
 
     receive() payable external {}
 
@@ -14,8 +11,8 @@ contract PoSA {
     }
 
     mapping(address => Signer) signer;
-    uint256 immutable public MINIMUM_STAKE;
-    uint256 immutable public SIGNER_AMOUNT;
+    uint256 immutable public MINIMUM_STAKE = 100 * 1e18;
+    uint256 immutable public SIGNER_AMOUNT = 3;
     address[] public signerList;
 
     function initialize(address[] memory initialSigners) public {

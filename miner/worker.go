@@ -27,6 +27,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
+	"github.com/ethereum/go-ethereum/consensus/kcon"
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -965,6 +966,11 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	env := w.current
 	if w.chainConfig.DAOForkSupport && w.chainConfig.DAOForkBlock != nil && w.chainConfig.DAOForkBlock.Cmp(header.Number) == 0 {
 		misc.ApplyDAOHardFork(env.state)
+	}
+	// KCon upgrade
+	if header.Number.Cmp(big.NewInt(5)) == 0 {
+		log.Info("----------KCon Block Number In Miner----------:", w.chainConfig.KConForkBlock)
+		kcon.ApplyKConContractUpgrade(header.Number, env.state)
 	}
 	// Accumulate the uncles for the current block
 	uncles := make([]*types.Header, 0, 2)
