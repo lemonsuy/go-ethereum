@@ -128,3 +128,8 @@ type PoW interface {
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
 	Hashrate() float64
 }
+
+// PoW is a consensus engine based on proof-of-work.
+type PoSA interface {
+	Engine
+}

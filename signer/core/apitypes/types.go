@@ -186,6 +186,10 @@ var (
 		accounts.MimetypeClique,
 		0x02,
 	}
+	ApplicationUnion = SigFormat{
+		accounts.MimetypeUnion,
+		0x02,
+	}
 	TextPlain = SigFormat{
 		accounts.MimetypeTextPlain,
 		0x45,

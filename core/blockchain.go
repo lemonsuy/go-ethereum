@@ -1528,6 +1528,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 			if bc.chainConfig.Clique == nil {
 				logger = log.Warn
 			}
+			if bc.chainConfig.Union == nil {
+				logger = log.Warn
+			}
 			logger("Inserted known block", "number", block.Number(), "hash", block.Hash(),
 				"uncles", len(block.Uncles()), "txs", len(block.Transactions()), "gas", block.GasUsed(),
 				"root", block.Root())

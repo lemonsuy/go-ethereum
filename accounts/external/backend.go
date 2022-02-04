@@ -170,6 +170,11 @@ func (api *ExternalSigner) SignData(account accounts.Account, mimeType string, d
 	if mimeType == accounts.MimetypeClique && (res[64] == 27 || res[64] == 28) {
 		res[64] -= 27 // Transform V from 27/28 to 0/1 for Clique use
 	}
+
+	// If V is on 27/28-form, convert to 0/1 for Union
+	if mimeType == accounts.MimetypeUnion && (res[64] == 27 || res[64] == 28) {
+		res[64] -= 27 // Transform V from 27/28 to 0/1 for Union use
+	}
 	return res, nil
 }
 
