@@ -11,7 +11,7 @@
     "constantinopleBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
-    "clique": {
+    "union": {
       "period": 5,
       "epoch": 100
     }

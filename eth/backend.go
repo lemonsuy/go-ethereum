@@ -471,6 +471,7 @@ func (s *Ethereum) StartMining(threads int) error {
 		}
 		var cli *clique.Clique
 		var uni *union.Union
+
 		if c, ok := s.engine.(*clique.Clique); ok {
 			cli = c
 		} else if u, ok := s.engine.(*union.Union); ok {
@@ -478,7 +479,9 @@ func (s *Ethereum) StartMining(threads int) error {
 		} else if cl, ok := s.engine.(*beacon.Beacon); ok {
 			if c, ok := cl.InnerEngine().(*clique.Clique); ok {
 				cli = c
-			}
+			} else if u, ok := cl.InnerEngine().(*union.Union); ok {
+				uni = u
+			} 
 		}
 
 		if cli != nil {
@@ -488,7 +491,8 @@ func (s *Ethereum) StartMining(threads int) error {
 				return fmt.Errorf("signer missing: %v", err)
 			}
 			cli.Authorize(eb, wallet.SignData)
-		} else if uni != nil {
+		}
+		if uni != nil {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)

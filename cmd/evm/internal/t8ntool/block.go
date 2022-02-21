@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
+	"github.com/ethereum/go-ethereum/consensus/union"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -71,6 +72,7 @@ type bbInput struct {
 	OmmersRlp []string     `json:"ommers,omitempty"`
 	TxRlp     string       `json:"txs,omitempty"`
 	Clique    *cliqueInput `json:"clique,omitempty"`
+	Union     *unionInput  `json:"union,omitempty"`
 
 	Ethash    bool                 `json:"-"`
 	EthashDir string               `json:"-"`
@@ -80,6 +82,13 @@ type bbInput struct {
 }
 
 type cliqueInput struct {
+	Key       *ecdsa.PrivateKey
+	Voted     *common.Address
+	Authorize *bool
+	Vanity    common.Hash
+}
+
+type unionInput struct {
 	Key       *ecdsa.PrivateKey
 	Voted     *common.Address
 	Authorize *bool
@@ -99,6 +108,31 @@ func (c *cliqueInput) UnmarshalJSON(input []byte) error {
 	}
 	if x.Key == nil {
 		return errors.New("missing required field 'secretKey' for cliqueInput")
+	}
+	if ecdsaKey, err := crypto.ToECDSA(x.Key[:]); err != nil {
+		return err
+	} else {
+		c.Key = ecdsaKey
+	}
+	c.Voted = x.Voted
+	c.Authorize = x.Authorize
+	c.Vanity = x.Vanity
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface.
+func (c *unionInput) UnmarshalJSON(input []byte) error {
+	var x struct {
+		Key       *common.Hash    `json:"secretKey"`
+		Voted     *common.Address `json:"voted"`
+		Authorize *bool           `json:"authorize"`
+		Vanity    common.Hash     `json:"vanity"`
+	}
+	if err := json.Unmarshal(input, &x); err != nil {
+		return err
+	}
+	if x.Key == nil {
+		return errors.New("missing required field 'secretKey' for unionInput")
 	}
 	if ecdsaKey, err := crypto.ToECDSA(x.Key[:]); err != nil {
 		return err
@@ -163,6 +197,8 @@ func (i *bbInput) SealBlock(block *types.Block) (*types.Block, error) {
 		return i.sealEthash(block)
 	case i.Clique != nil:
 		return i.sealClique(block)
+	case i.Union != nil:
+		return i.sealUnion(block)
 	default:
 		return block, nil
 	}
@@ -234,6 +270,45 @@ func (i *bbInput) sealClique(block *types.Block) (*types.Block, error) {
 	return block, nil
 }
 
+// sealUnion seals the given block using union.
+func (i *bbInput) sealUnion(block *types.Block) (*types.Block, error) {
+	// If any union value overwrites an explicit header value, fail
+	// to avoid silently building a block with unexpected values.
+	if i.Header.Extra != nil {
+		return nil, NewError(ErrorConfig, fmt.Errorf("sealing with union will overwrite provided extra data"))
+	}
+	header := block.Header()
+	if i.Union.Voted != nil {
+		if i.Header.Coinbase != nil {
+			return nil, NewError(ErrorConfig, fmt.Errorf("sealing with union and voting will overwrite provided coinbase"))
+		}
+		header.Coinbase = *i.Union.Voted
+	}
+	if i.Union.Authorize != nil {
+		if i.Header.Nonce != nil {
+			return nil, NewError(ErrorConfig, fmt.Errorf("sealing with union and voting will overwrite provided nonce"))
+		}
+		if *i.Union.Authorize {
+			header.Nonce = [8]byte{}
+		} else {
+			header.Nonce = [8]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+		}
+	}
+	// Extra is fixed 32 byte vanity and 65 byte signature
+	header.Extra = make([]byte, 32+65)
+	copy(header.Extra[0:32], i.Union.Vanity.Bytes()[:])
+
+	// Sign the seal hash and fill in the rest of the extra data
+	h := union.SealHash(header)
+	sighash, err := crypto.Sign(h[:], i.Union.Key)
+	if err != nil {
+		return nil, err
+	}
+	copy(header.Extra[32:], sighash)
+	block = block.WithSeal(header)
+	return block, nil
+}
+
 // BuildBlock constructs a block from the given inputs.
 func BuildBlock(ctx *cli.Context) error {
 	// Configure the go-ethereum logger
@@ -263,6 +338,7 @@ func readInput(ctx *cli.Context) (*bbInput, error) {
 		ommersStr  = ctx.String(InputOmmersFlag.Name)
 		txsStr     = ctx.String(InputTxsRlpFlag.Name)
 		cliqueStr  = ctx.String(SealCliqueFlag.Name)
+		unionStr   = ctx.String(SealUnionFlag.Name)
 		ethashOn   = ctx.Bool(SealEthashFlag.Name)
 		ethashDir  = ctx.String(SealEthashDirFlag.Name)
 		ethashMode = ctx.String(SealEthashModeFlag.Name)
@@ -270,6 +346,8 @@ func readInput(ctx *cli.Context) (*bbInput, error) {
 	)
 	if ethashOn && cliqueStr != "" {
 		return nil, NewError(ErrorConfig, fmt.Errorf("both ethash and clique sealing specified, only one may be chosen"))
+	} else if ethashOn && unionStr != "" {
+		return nil, NewError(ErrorConfig, fmt.Errorf("both ethash and union sealing specified, only one may be chosen"))
 	}
 	if ethashOn {
 		inputData.Ethash = ethashOn
@@ -297,6 +375,13 @@ func readInput(ctx *cli.Context) (*bbInput, error) {
 			return nil, err
 		}
 		inputData.Clique = &clique
+	}
+	if unionStr != stdinSelector && unionStr != "" {
+		var union unionInput
+		if err := readFile(unionStr, "union", &union); err != nil {
+			return nil, err
+		}
+		inputData.Union = &union
 	}
 	if headerStr != stdinSelector {
 		var env header

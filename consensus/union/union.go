@@ -398,6 +398,7 @@ func (c *Union) snapshot(chain consensus.ChainHeaderReader, number uint64, hash 
 				signers := make([]common.Address, (len(checkpoint.Extra)-extraVanity-extraSeal)/common.AddressLength)
 				for i := 0; i < len(signers); i++ {
 					copy(signers[i][:], checkpoint.Extra[extraVanity+i*common.AddressLength:])
+					fmt.Println("-------Signer-------:", signers[i].String())
 				}
 				snap = newSnapshot(c.config, c.signatures, number, hash, signers)
 				if err := snap.store(c.db); err != nil {

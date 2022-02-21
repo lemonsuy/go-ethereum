@@ -119,6 +119,10 @@ var (
 		Name:  "seal.clique",
 		Usage: "Seal block with Clique. `stdin` or file name of where to find the Clique sealing data.",
 	}
+	SealUnionFlag = cli.StringFlag{
+		Name:  "seal.union",
+		Usage: "Seal block with Union. `stdin` or file name of where to find the Union sealing data.",
+	}
 	SealEthashFlag = cli.BoolFlag{
 		Name:  "seal.ethash",
 		Usage: "Seal block with ethash.",

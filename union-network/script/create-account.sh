@@ -4,5 +4,8 @@ geth account new --datadir /Users/lemon.pattharathon/lemon-research/go-ethereum/
 echo "Creating [node 2] account.."
 geth account new --datadir /Users/lemon.pattharathon/lemon-research/go-ethereum/union-network/node2
 
+echo "Creating [node 3] account.."
+geth account new --datadir /Users/lemon.pattharathon/lemon-research/go-ethereum/union-network/node3
+
 sleep 1;
 echo "Done!"

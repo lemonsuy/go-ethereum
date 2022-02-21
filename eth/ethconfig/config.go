@@ -215,10 +215,10 @@ type Config struct {
 func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, config *ethash.Config, notify []string, noverify bool, db ethdb.Database) consensus.Engine {
 	// If proof-of-authority is requested, set it up
 	var engine consensus.Engine
-	if chainConfig.Clique != nil {
-		engine = clique.New(chainConfig.Clique, db)
-	} else if chainConfig.Union != nil {
+	if chainConfig.Union != nil {
 		engine = union.New(chainConfig.Union, db)
+	} else if chainConfig.Clique != nil {
+		engine = clique.New(chainConfig.Clique, db)
 	} else {
 		switch config.PowMode {
 		case ethash.ModeFake:
